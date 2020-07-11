@@ -203,7 +203,6 @@ class NumpyDocString(Mapping):
                 section += ['']
 
             section += self._doc.read_to_next_empty_line()
-
         return section
 
     def _read_sections(self):
@@ -387,6 +386,10 @@ class NumpyDocString(Mapping):
             raise ValueError(msg)
 
         for (section, content) in sections:
+            if section == 'Yield':
+                section = 'Yields'
+            if section == 'Options':
+                section = 'Parameters'
             if not section.startswith('..'):
                 section = (s.capitalize() for s in section.split(' '))
                 section = ' '.join(section)
