@@ -210,7 +210,20 @@ class NumpyDocString(Mapping):
             if name.startswith('..'):  # index section
                 yield name, data[1:]
             elif len(data) < 2:
-                yield StopIteration
+                # This branch is a leftover from the days when this used
+                # to be ``raise StopIteration`` (before PEP 479 made that
+                # illegal inside a generator). It is expected to be
+                # unreachable: ``_read_to_next_section`` is only called
+                # once ``_is_at_section`` has confirmed we are positioned
+                # on a genuine "title\n-----\n" header, and its
+                # underline is by construction never blank, so the
+                # first ``read_to_next_empty_line`` call it makes always
+                # returns at least the title and its underline (len 2),
+                # and further reads can only append to that. We keep
+                # the guard (as ``return``, ending the generator, rather
+                # than yielding a bogus 2-tuple) in case that invariant
+                # is ever broken.
+                return
             else:
                 yield name, self._strip(data[2:])
 
