@@ -164,6 +164,11 @@ class NumpyDocString(Mapping):
     def __len__(self):
         return len(self._parsed_data)
 
+    # A candidate section underline: a run of three or more '-' or
+    # '=' characters (and nothing else), matching what real section
+    # underlines are made of.
+    _underline_re = re.compile(r'^(-{3,}|={3,})$')
+
     def _is_at_section(self):
         self._doc.seek_next_non_empty_line()
 
@@ -176,7 +181,52 @@ class NumpyDocString(Mapping):
             return True
 
         l2 = self._doc.peek(1).strip()  # ---------- or ==========
-        return l2.startswith('-'*len(l1)) or l2.startswith('='*len(l1))
+        if l2.startswith('-'*len(l1)) or l2.startswith('='*len(l1)):
+            return True
+
+        self._warn_on_short_underline(l1, l2)
+        return False
+
+    def _warn_on_short_underline(self, title, underline):
+        """Warn when a line looks like a section header whose underline
+        is one (or more) characters too short.
+
+        ``_is_at_section`` only recognizes an underline that is at
+        least as long as the title above it, per the historical numpy
+        docstring convention. A shorter underline is not an error: it
+        is simply not recognized as a section at all, so the would-be
+        header and everything below it are silently swallowed into
+        the previous section as prose, with no error or warning. This
+        is one of the most common numpydoc typos, so we emit a
+        non-fatal warning for it here without changing what parses.
+
+        To avoid false positives on ordinary prose and on RST
+        transitions/tables, all of the following must hold:
+
+        - the line below ``title`` is made up of nothing but '-' or
+          '=' characters (repeated at least 3 times), i.e. it looks
+          like a section underline and not, say, a table border row
+          (which mixes '=' with spaces) or arbitrary punctuation;
+        - ``title`` and that line are directly adjacent, with no
+          blank line between them. A genuine RST transition marker
+          must be preceded (and followed) by a blank line, so this
+          alone rules out transitions;
+        - ``title`` does not end with typical sentence punctuation
+          ('.', ',', ':', ';', '!', '?'). Real section titles such as
+          "Parameters" or "See Also" never end this way, while an
+          ordinary sentence of prose usually does.
+        """
+        if not title or title.startswith('..'):
+            return
+        if title[-1] in '.,:;!?':
+            return
+        if not self._underline_re.match(underline):
+            return
+        if len(underline) >= len(title):
+            return
+        msg = ("Potential section header '%s' has an underline that "
+               "is too short" % title)
+        self._error_location(msg, error=False)
 
     def _strip(self, doc):
         i = 0

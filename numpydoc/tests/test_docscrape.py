@@ -1529,6 +1529,83 @@ y  : int
     assert params['y'] == 'int'
 
 
+def test_short_underline_warning():
+    # The most common numpydoc typo: an underline one character too
+    # short. It is not recognized as a section header at all (that
+    # part of the behavior is unchanged), but it should now be
+    # reported as a diagnostic warning.
+    doc_text = """
+Test a too-short section underline.
+
+Parameters
+---------
+x : int
+    Some parameter.
+"""
+    with warnings.catch_warnings(record=True) as w:
+        warnings.filterwarnings('always', '', UserWarning)
+        doc = NumpyDocString(doc_text)
+        assert len(w) == 1
+        assert ("Potential section header 'Parameters' has an "
+                "underline that is too short") == str(w[0].message)
+
+    # Since the underline is too short, "Parameters" is not
+    # recognized as a section: it (and its "underline") become part
+    # of the extended summary, and there is no Parameters section.
+    assert doc['Parameters'] == []
+
+
+def test_correct_underline_no_warning():
+    doc_text = """
+Test a correct-length section underline.
+
+Parameters
+----------
+x : int
+    Some parameter.
+"""
+    with warnings.catch_warnings(record=True) as w:
+        warnings.filterwarnings('always', '', UserWarning)
+        doc = NumpyDocString(doc_text)
+        assert len(w) == 0
+    assert len(doc['Parameters']) == 1
+
+
+def test_longer_underline_no_warning():
+    doc_text = """
+Test a longer-than-needed section underline.
+
+Parameters
+-----------------
+x : int
+    Some parameter.
+"""
+    with warnings.catch_warnings(record=True) as w:
+        warnings.filterwarnings('always', '', UserWarning)
+        doc = NumpyDocString(doc_text)
+        assert len(w) == 0
+    assert len(doc['Parameters']) == 1
+
+
+def test_ordinary_prose_no_short_underline_warning():
+    # A sentence of ordinary prose, immediately followed by a run of
+    # dashes used as a divider, should not be mistaken for a section
+    # header with a too-short underline.
+    doc_text = """
+Test that ordinary prose is not flagged.
+
+Notes
+-----
+This is just a sentence of prose, not a section title.
+---
+More notes below the divider.
+"""
+    with warnings.catch_warnings(record=True) as w:
+        warnings.filterwarnings('always', '', UserWarning)
+        NumpyDocString(doc_text)
+        assert len(w) == 0
+
+
 if __name__ == "__main__":
     import pytest
     pytest.main()
