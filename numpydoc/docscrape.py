@@ -221,6 +221,7 @@ class NumpyDocString(Mapping):
             header = r.read().strip()
             if ' : ' in header:
                 arg_name, arg_type = header.split(' : ', maxsplit=1)
+                arg_name, arg_type = arg_name.strip(), arg_type.strip()
             else:
                 if single_element_is_type:
                     arg_name, arg_type = '', header

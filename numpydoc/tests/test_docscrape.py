@@ -1505,6 +1505,30 @@ x : int : optional
     assert params['x'] == 'int : optional'
 
 
+def test_parameter_header_whitespace_is_stripped():
+    # Regression test: the header is only stripped once, before the
+    # split on ' : ', so extra whitespace directly adjacent to the
+    # separator used to leak into the parsed name and type, e.g.
+    # "x :  int" gave a type of " int" and "x  : int" gave a name of
+    # "x ".
+    doc_text = """
+Test parameter headers with irregular whitespace around ' : '.
+
+Parameters
+----------
+x :  int
+    Extra spaces before the type.
+y  : int
+    Extra spaces after the name.
+"""
+    doc = NumpyDocString(doc_text)
+    params = {p.name: p.type for p in doc['Parameters']}
+    assert 'x' in params
+    assert params['x'] == 'int'
+    assert 'y' in params
+    assert params['y'] == 'int'
+
+
 if __name__ == "__main__":
     import pytest
     pytest.main()
