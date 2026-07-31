@@ -1484,6 +1484,27 @@ def test_xref():
     line_by_line_compare(str(doc), xref_doc_txt_expected)
 
 
+def test_parameter_header_with_multiple_colons():
+    # Regression test: header.split(' : ') used to split on *every*
+    # occurrence of ' : ', silently truncating types that themselves
+    # contain ' : ' (e.g. dict types) or headers with more than two
+    # fields.
+    doc_text = """
+Test parameter headers containing more than one ' : '.
+
+Parameters
+----------
+d : dict of {str : int}
+    A mapping from names to counts.
+x : int : optional
+    A field with three parts separated by ' : '.
+"""
+    doc = NumpyDocString(doc_text)
+    params = {p.name: p.type for p in doc['Parameters']}
+    assert params['d'] == 'dict of {str : int}'
+    assert params['x'] == 'int : optional'
+
+
 if __name__ == "__main__":
     import pytest
     pytest.main()
